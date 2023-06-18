@@ -113,14 +113,20 @@ cpu.uart[0].onTX = (value) => {
 
 let startTime = 0;
 if (exitOnReset) {
-  cpu.onReset = () => {
-    console.log('Time:', new Date().getTime() - startTime);
-    process.exit(0);
-  };
+  let first = true;
   for (const core of cpu.cores) {
-    core.reset = () => {
-      console.log('Time:', new Date().getTime() - startTime);
-      process.exit(0);
+    core.breakpoints = {
+      0x40000080: () => {
+        if (first) {
+          first = false;
+          return false;
+        }
+        console.log(
+          'SOC restarted. Exiting after ',
+          ((new Date().getTime() - startTime) / 1000).toFixed(2) + 's'
+        );
+        process.exit(0);
+      },
     };
   }
 }
