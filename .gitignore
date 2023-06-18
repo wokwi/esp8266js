@@ -1,0 +1,8 @@
+.cache
+.history
+.idea
+node_modules
+dist
+*.log
+*.elf
+*.bin

@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "rootDir": ".",
+    "esModuleInterop": true,
+    "noEmitOnError": false
+  },
+  "extends": "./tsconfig.json",
+  "include": ["src/**/*.ts", "tools/**/*.ts"]
+}
