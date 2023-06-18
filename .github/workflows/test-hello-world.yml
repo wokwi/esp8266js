@@ -1,0 +1,62 @@
+name: Build and Simulate ESP8266 Hello World
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc git wget make libncurses-dev flex bison gperf python3 python3-serial
+      - name: Checkout ESP8266_RTOS_SDK
+        uses: actions/checkout@v3
+        with:
+          repository: espressif/ESP8266_RTOS_SDK
+          path: ESP8266_RTOS_SDK
+          fetch-depth: 0
+      - name: Build "hello_world"
+        working-directory: ESP8266_RTOS_SDK
+        run: |
+          ./install.sh
+          . ./export.sh
+          cd examples/get-started/hello_world
+          make defconfig all
+      - name: Upload "hello_world"
+        uses: actions/upload-artifact@v3
+        with:
+          name: hello_world
+          path: ESP8266_RTOS_SDK/examples/get-started/hello_world/build
+  simulate:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Cache node modules
+        uses: actions/cache@v3
+        id: npm-cache
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Install npm dependencies
+        if: steps.npm-cache.outputs.cache-hit != 'true'
+        run: npm ci
+        env:
+          HUSKY: 0
+      - uses: actions/download-artifact@v3
+        with:
+          name: hello_world
+          path: hello_world
+      - name: Simulate "hello_world"
+        run: |
+          timeout 60s npm run start -- --exit-on-reset 0 hello_world/bootloader/bootloader.bin 0x8000 hello_world/partitions_singleapp.bin 0x10000 hello_world/hello-world.bin 2>&1 | tee output.txt
+          grep -q "Hello world!" output.txt
+          grep -q "This is ESP8266 chip with 1 CPU cores, WiFi, silicon revision 1, 2MB external flash" output.txt
